@@ -1057,9 +1057,9 @@ func ManageProjectItemsPrompt(t translations.TranslationHelperFunc) (tool mcp.Pr
 						"**Understanding Project Items:**\n" +
 						"- Project items reference underlying content (issues or pull requests)\n" +
 						"- Project tools provide: project fields, item metadata, and basic content info\n" +
-						"- For detailed information about an issue or pull request (comments, events, etc.), use issue/PR specific tools\n" +
+						"- For detailed information about an issue or pull request (comments, reviews, etc.), use issue/PR specific tools\n" +
 						"- The 'content' field in project items includes: repository, issue/PR number, title, state\n" +
-						"- Use this info to fetch full details: **get_issue**, **list_comments**, **list_issue_events**\n\n" +
+						"- Use this info to fetch full details: **issue_read**, **pull_request_read**\n\n" +
 						"**Available Tools:**\n" +
 						"- **list_projects**: Discover available projects\n" +
 						"- **get_project**: Get detailed project information\n" +
@@ -1105,6 +1105,7 @@ func ManageProjectItemsPrompt(t translations.TranslationHelperFunc) (tool mcp.Pr
 						"   - Filter by assignees: query=\"assignee:@me\"\n" +
 						"   - Filter by status: query=\"status:In Progress\"\n" +
 						"   - Filter by labels: query=\"label:bug\"\n" +
+						"   - Combine filters: query=\"assignee:@me status:\"In Progress\" label:bug\"\n" +
 						"   - Include specific fields: fields=[\"198354254\", \"198354255\"]\n\n" +
 						"**💡 Pro Tip:** Always specify the 'fields' parameter to get field values, not just titles!"),
 				},
@@ -1157,7 +1158,7 @@ func ManageProjectItemsPrompt(t translations.TranslationHelperFunc) (tool mcp.Pr
 						"  owner=\"%s\"\n"+
 						"  owner_type=\"%s\"\n"+
 						"  project_number=123\n"+
-						"  query=\"assignee:@me\"\n"+
+						"  query=\"assignee:@me status:in progress\"\n"+
 						"  fields=[\"198354254\", \"other_field_ids\"]\n\n\n"+
 						"**Step 4:** Update item status\n\n"+
 						"**update_project_item**\n"+
@@ -1181,22 +1182,25 @@ func ManageProjectItemsPrompt(t translations.TranslationHelperFunc) (tool mcp.Pr
 						"- content.number (the issue/PR number)\n" +
 						"- content_type (\"Issue\" or \"PullRequest\")\n\n" +
 						"**Then use these tools for details:**\n\n" +
-						"1. **Get full issue/PR details:**\n" +
-						"   - **get_issue** owner=repo_owner repo=repo_name issue_number=123\n" +
-						"   - Returns: full body, labels, assignees, milestone, etc.\n\n" +
-						"2. **Get recent comments:**\n" +
-						"   - **list_comments** owner=repo_owner repo=repo_name issue_number=123\n" +
-						"   - Add since parameter to filter recent comments\n\n" +
-						"3. **Get issue events:**\n" +
-						"   - **list_issue_events** owner=repo_owner repo=repo_name issue_number=123\n" +
-						"   - Shows timeline: assignments, label changes, status updates\n\n" +
-						"4. **For pull requests specifically:**\n" +
-						"   - **get_pull_request** owner=repo_owner repo=repo_name pull_number=123\n" +
-						"   - **list_pull_request_reviews** for review status\n\n" +
+						"**For issues:**\n" +
+						"- **issue_read** with method parameter:\n" +
+						"  - method=\"get\" - Get issue details\n" +
+						"  - method=\"get_comments\" - Get issue comments (supports pagination)\n" +
+						"  - method=\"get_sub_issues\" - Get sub-issues (supports pagination)\n" +
+						"  - method=\"get_labels\" - Get issue labels\n\n" +
+						"**For pull requests:**\n" +
+						"- **pull_request_read** with method parameter:\n" +
+						"  - method=\"get\" - Get PR details\n" +
+						"  - method=\"get_comments\" - Get PR comments (supports pagination)\n" +
+						"  - method=\"get_review_comments\" - Get review comments on code (supports pagination)\n" +
+						"  - method=\"get_reviews\" - Get PR reviews\n" +
+						"  - method=\"get_status\" - Get build/check status\n" +
+						"  - method=\"get_files\" - Get changed files (supports pagination)\n" +
+						"  - method=\"get_diff\" - Get the full diff\n\n" +
 						"**💡 Example:** To check for blockers in comments:\n" +
 						"1. Get project items with query=\"assignee:@me is:open\"\n" +
-						"2. For each item, extract repository and issue number from content\n" +
-						"3. Use **list_comments** to get recent comments\n" +
+						"2. For each item, extract repository info and number from content\n" +
+						"3. Use **issue_read** method=\"get_comments\" or **pull_request_read** method=\"get_comments\"\n" +
 						"4. Search comments for keywords like \"blocked\", \"blocker\", \"waiting\""),
 				},
 			}
