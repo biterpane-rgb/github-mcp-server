@@ -1,6 +1,5 @@
 BOOL ProcessAction( Ausgabeprozessstatus &Status )
-{
-  //DFWWS_Belegdruck_Archivierung
+//DFWWS_Belegdruck_Archivierung
   Beleg oBeleg;
   FormularAllSet FormAS;
   Formular oForm;
@@ -11,113 +10,81 @@ BOOL ProcessAction( Ausgabeprozessstatus &Status )
   DBSTRINGSET Printers;
   STRING sDefPrinter1="GSD Archiv+",sDefPrinter2="";
   INT iDef;
-
-  // Drucker-Definitionen gemäß neuer Tabelle
-  STRING sPrintLB = "\\\\SRLDELAS80\\LB-SW";        // Lauenburg SW (Fach 3)
-  STRING sPrintAB = "\\\\SRLDELAS80\\AB-Kopie";     // Ahrensburg Kopie (Fach 3)
-  STRING sPrintLBKopie = "\\\\SRLDELAS80\\LB-Kopie"; // Lauenburg Kopie (Fach 3) - NEU
-  STRING sPrintLS = "\\\\SRLDELAS80\\Lieferschein"; // Lieferschein (Fach 2)
+  STRING sPrintLB = "\\\\SRLDELAS80\\LB-SW";
+  STRING sPrintAB = "\\\\SRLDELAS80\\AB-Kopie";
+  STRING sPrintLBKopie = "\\\\SRLDELAS80\\LB-Kopie";
+  STRING sPrintLS = "\\\\SRLDELAS80\\Lieferschein";
 
   IF(!::bNoPrintPhysical)
     oBeleg = Status.Prozessobjekt;
     FormAS.SortByIndex("Name");
-
     sEmailParam = Status.Parameter.GetField("OutputEmail");
     Printers.GetPrinterNamesConnected();
-
     IF(sEmailParam == "TRUE")
-      bEMail = TRUE;
+      //IF(DBGetUserName().ToLower() != "gsdadmin")
+        bEMail = TRUE;
+      //ENDIF
     ELSE
       bEMail = FALSE;
     ENDIF
-
-    // E-Mail-Versand (PDF) - gilt für alle Stufen wenn aktiviert
     IF(bEMail)
       SWITCH(oBeleg.xGSDFaktBelegstufe)
-        CASE 1:  // Angebot
-          // 1x Standard: PDF - Email
-          // 1x Kopie: Drucken auf LB-SW
-          sPrintername = sPrintLB;
-          PrintForm(Status.Formular,oBeleg,FALSE,sPrintername,iCopies);
+        CASE 1:
+          sPrintername = sPrintLB;  //Kasette3
           BREAK;
-
-        CASE 2:  // Auftragsbestätigung
-          // 1x Standard: PDF - Email
-          // 1x Kopie: Drucken auf LB-SW
-          sPrintername = sPrintLB;
-          PrintForm(Status.Formular,oBeleg,FALSE,sPrintername,iCopies);
+        CASE 2:
+          sPrintername = sPrintLB; //Kasette3
           BREAK;
-
-        CASE 3:  // Lieferschein
+        CASE 3:
           IF(oBeleg.Belegart.xGSDFaktBelegtyp == 1)
-            // 1x Standard: Drucken auf Lieferschein
-            // 1x Wahlweise: PDF - Email
-            sPrintername = sPrintLS;
-            PrintForm(Status.Formular,oBeleg,FALSE,sPrintername,iCopies);
+            sPrintername = sPrintLS;  //Kasette2
           ENDIF
           BREAK;
-
-        CASE 4:  // Rechnung
-        CASE 5:  // Rechnungskorrektur
-          // 1x Standard: PDF - Email
-          // 2x Kopie: Drucken auf AB-Kopie
-          sPrintername = sPrintAB;
+        CASE 4:
+        CASE 5:
+          sPrintername = sPrintAB;  //Kasette3 in AB
           iCopies = 2;
           PrintForm(Status.Formular,oBeleg,FALSE,sPrintername,iCopies);
-
-          // 1x Kopie: Drucken auf LB-Kopie
-          sPrintername = sPrintLBKopie;
+          sPrintername = sPrintLBKopie;  //Kasette3 in LB
           iCopies = 1;
-          PrintForm(Status.Formular,oBeleg,FALSE,sPrintername,iCopies);
           BREAK;
-
         DEFAULT:
           sPrintername = sPrintLB;
-          PrintForm(Status.Formular,oBeleg,FALSE,sPrintername,iCopies);
           BREAK;
       ENDSWITCH
+      PrintForm(Status.Formular,oBeleg,FALSE,sPrintername,iCopies);
     ENDIF
-
-    // Spezielle Drucklogik für Stufe 2 (Auftragsbestätigung)
-    IF(oBeleg.xGSDFaktBelegstufe == 2)
-      FormAS.FindKeyStr("Lieferschein");
-      FormAS.Get(oForm);
-      sPrintername = sPrintLB; // Lauenburg SW (Fach 3)
-
-      // Disposchein: 1x Standard Drucken
-      _yit_Fakt::FormDruckName = "Disposchein";
-      IF(DBGetUserName().ToLower() == "gsdadmin")
-        PrintForm(oForm,oBeleg);
-      ELSE
-        PrintForm(oForm,oBeleg,FALSE,sPrintername,1);
+    //IF(DBGetUserName().ToLower() != "gsdadmin")
+      IF(oBeleg.xGSDFaktBelegstufe == 2)
+        FormAS.FindKeyStr("Lieferschein");
+        FormAS.Get(oForm);
+        sPrintername = sPrintLB; //Großraum
+        _yit_Fakt::FormDruckName = "Disposchein";
+        IF(DBGetUserName().ToLower() == "gsdadmin")
+          PrintForm(oForm,oBeleg);
+        ELSE
+          PrintForm(oForm,oBeleg,FALSE,sPrintername,iCopies);
+        ENDIF
+        _yit_Fakt::FormDruckName = "Arbeitsschein"; //Großraum
+        PrintForm(oForm,oBeleg,FALSE,sPrintername,iCopies);
+        _yit_Fakt::FormDruckName = "";
+      ELSEIF(oBeleg.xGSDFaktBelegstufe == 3 && oBeleg.Belegart.xGSDFaktBelegtyp == 1)
+        FormAS.FindKeyStr("Lieferschein");
+        FormAS.Get(oForm);
+        _yit_Fakt::FormDruckName = "Empfangsschein"; //Kasette 2
+        sPrintername = sPrintLS;
+        PrintForm(oForm,oBeleg,FALSE,sPrintername,iCopies);
+        _yit_Fakt::FormDruckName = "";
+        FormAS.FindKeyStr("Beleg allgemein");
+        FormAS.Get(oForm);
+        sPrintername = sPrintLB;
+        _yit_Fakt::FormDruckName = "Rechnungsvorschau"; //Großraum
+        PrintForm(oForm,oBeleg,FALSE,sPrintername,iCopies);
+        _yit_Fakt::FormDruckName = "";
       ENDIF
-
-      // Arbeitsschein: 1x Standard Drucken
-      _yit_Fakt::FormDruckName = "Arbeitsschein";
-      PrintForm(oForm,oBeleg,FALSE,sPrintername,1);
-      _yit_Fakt::FormDruckName = "";
-
-    // Spezielle Drucklogik für Stufe 3 (Lieferschein)
-    ELSEIF(oBeleg.xGSDFaktBelegstufe == 3 && oBeleg.Belegart.xGSDFaktBelegtyp == 1)
-      // Empfangsschein: 1x Standard Drucken auf Lieferschein (Fach 2)
-      FormAS.FindKeyStr("Lieferschein");
-      FormAS.Get(oForm);
-      _yit_Fakt::FormDruckName = "Empfangsschein";
-      sPrintername = sPrintLS; // Lieferschein-Drucker (Fach 2)
-      PrintForm(oForm,oBeleg,FALSE,sPrintername,1);
-      _yit_Fakt::FormDruckName = "";
-
-      // Rechnungsvorschau: 1x Standard Drucken auf LB-SW (Fach 3)
-      FormAS.FindKeyStr("Beleg allgemein");
-      FormAS.Get(oForm);
-      sPrintername = sPrintLB; // Lauenburg SW (Fach 3)
-      _yit_Fakt::FormDruckName = "Rechnungsvorschau";
-      PrintForm(oForm,oBeleg,FALSE,sPrintername,1);
-      _yit_Fakt::FormDruckName = "";
-    ENDIF
-
+    //ELSE
+      //MessageBox("Test");
+    //ENDIF
     Trace("############## Ende Print");
   ENDIF
-
-  RETURN( Status.xGSDFaktProcessAction_VoucherPostArchive() );
-}
+RETURN( Status.xGSDFaktProcessAction_VoucherPostArchive() );
