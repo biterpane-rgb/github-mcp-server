@@ -36,9 +36,7 @@ BOOL ProcessAction( Ausgabeprozessstatus &Status )
           sPrintername = sPrintLB; //Kasette3
           BREAK;
         CASE 3:
-          IF(oBeleg.Belegart.xGSDFaktBelegtyp == 1)
-            sPrintername = sPrintLS;  //Kasette2
-          ENDIF
+          //Lieferschein/Empfangsschein werden zusammen unten gedruckt
           BREAK;
         CASE 4:
         CASE 5:
@@ -52,7 +50,9 @@ BOOL ProcessAction( Ausgabeprozessstatus &Status )
           sPrintername = sPrintLB;
           BREAK;
       ENDSWITCH
-      PrintForm(Status.Formular,oBeleg,FALSE,sPrintername,iCopies);
+      IF(oBeleg.xGSDFaktBelegstufe != 3)
+        PrintForm(Status.Formular,oBeleg,FALSE,sPrintername,iCopies);
+      ENDIF
     ENDIF
     //IF(DBGetUserName().ToLower() != "gsdadmin")
       IF(oBeleg.xGSDFaktBelegstufe == 2)
@@ -71,8 +71,11 @@ BOOL ProcessAction( Ausgabeprozessstatus &Status )
       ELSEIF(oBeleg.xGSDFaktBelegstufe == 3 && oBeleg.Belegart.xGSDFaktBelegtyp == 1)
         FormAS.FindKeyStr("Lieferschein");
         FormAS.Get(oForm);
-        _yit_Fakt::FormDruckName = "Empfangsschein"; //Kasette 2
-        sPrintername = sPrintLS;
+        sPrintername = sPrintLS; //Kasette 2
+        //Lieferschein drucken
+        PrintForm(oForm,oBeleg,FALSE,sPrintername,iCopies);
+        //Empfangsschein direkt im Anschluss auf gleichem Drucker
+        _yit_Fakt::FormDruckName = "Empfangsschein";
         PrintForm(oForm,oBeleg,FALSE,sPrintername,iCopies);
         _yit_Fakt::FormDruckName = "";
         FormAS.FindKeyStr("Beleg allgemein");
