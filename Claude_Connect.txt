@@ -1,0 +1,76 @@
+STRING _yit_PP_Claude_Connect(STRING eingabe = "Was ist DOCUframe")
+
+  STRING Makroname = "_yit_PP_Claude_Connect - ";
+  STRING accessToken, responseHeader;
+  STRING portalURL = "api.anthropic.com", loginPath = "/v1/messages";
+  STRING apiKey = "YOUR_ANTHROPIC_API_KEY_HERE"; // TODO: Aus Konfiguration laden!
+  STRING loginHeader = "x-api-key: " + apiKey + " \n\r anthropic-version: 2023-06-01 \n\r content-type: application/json";
+  STRING body = "{
+    \"model\": \"claude-sonnet-4-5-20250929\",
+    \"max_tokens\": 1024,
+    \"messages\": [{\"role\": \"user\", \"content\": \""+eingabe+"\"}]
+  }";
+  STRING loginResponse;
+  BOOL portalSecure = TRUE;
+  INT portalPort = 443;
+  HJSON loginJSON, contentArray, textObject;
+  STRING antwort = "";
+  BOOL bSuccess = FALSE;
+
+  Trace(Makroname + "Start Portal Login");
+  Trace(Makroname + "Anfrage: " + eingabe);
+
+  // HTTP-Request an Claude API senden
+  HTTPGetResponse( portalURL, loginPath, body, "", portalSecure, loginResponse, portalPort,"","", FALSE,30000,"","", loginHeader, responseHeader );
+
+  // Prüfen ob eine Antwort erhalten wurde
+  IF(loginResponse != "")
+    loginJSON.Construct();
+    loginJSON.SetText( loginResponse );
+
+    // Prüfen ob die Response ein "content"-Array enthält
+    IF(loginJSON.HasMember("content"))
+      contentArray = loginJSON.GetMember("content");
+
+      // Content ist ein Array, erstes Element holen
+      IF(contentArray.IsArray() && contentArray.GetArraySize() > 0)
+        textObject = contentArray.GetArrayItem(0);
+
+        // Text aus dem ersten Content-Element extrahieren
+        IF(textObject.HasMember("text"))
+          antwort = textObject.GetMember("text").GetString();
+          bSuccess = TRUE;
+          Trace(Makroname + "Antwort erfolgreich erhalten");
+        ELSE
+          antwort = "Fehler: 'text'-Feld nicht gefunden in Content-Array";
+          Trace(Makroname + antwort);
+        ENDIF
+      ELSE
+        antwort = "Fehler: 'content' ist kein Array oder leer";
+        Trace(Makroname + antwort);
+      ENDIF
+    ELSEIF(loginJSON.HasMember("error"))
+      // API-Fehler behandeln
+      antwort = "API-Fehler: " + loginJSON.GetMember("error").GetMember("message").GetString();
+      Trace(Makroname + antwort);
+    ELSE
+      antwort = "Fehler: Unerwartete API-Antwort";
+      Trace(Makroname + "Response: " + loginResponse);
+    ENDIF
+
+    loginJSON.Destruct();
+  ELSE
+    antwort = "Fehler: Keine Antwort von der API erhalten";
+    Trace(Makroname + antwort);
+  ENDIF
+
+  // Antwort anzeigen (nur wenn erfolgreich)
+  IF(bSuccess)
+    MessageBox(antwort);
+  ELSE
+    MessageBox("Fehler bei der Kommunikation mit Claude API:\n\n" + antwort);
+  ENDIF
+
+  Trace(Makroname + "Ende Portal Login");
+
+RETURN( antwort );
